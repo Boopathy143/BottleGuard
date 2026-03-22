@@ -1,0 +1,7 @@
+flask
+opencv-python-headless
+numpy
+werkzeug
+cloudinary
+imagehash
+Pillow

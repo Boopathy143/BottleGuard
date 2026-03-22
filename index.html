@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BottleGuard — Defect Detection System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0d0d;--surface:#141414;--surface2:#1c1c1c;--surface3:#242424;
+  --border:#2a2a2a;--border2:#333333;--accent:#F97316;--accent2:#fb923c;
+  --pass:#22c55e;--fail:#ef4444;--text:#e8e8e8;--text2:#999;--text3:#555;
+  --font-head:'Rajdhani',sans-serif;--font-mono:'Share Tech Mono',monospace;
+  --font-body:'Inter',sans-serif;--radius:6px;--shadow:0 4px 24px rgba(0,0,0,0.6);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;min-height:100vh;line-height:1.5;
+  background-image:linear-gradient(rgba(249,115,22,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(249,115,22,0.03) 1px,transparent 1px);
+  background-size:40px 40px;}
+.header{position:sticky;top:0;z-index:100;background:rgba(13,13,13,0.95);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;gap:24px;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-icon{width:40px;height:40px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;}
+.brand-name{font-family:var(--font-head);font-size:20px;font-weight:700;letter-spacing:1px;display:block;}
+.brand-sub{font-family:var(--font-mono);font-size:10px;color:var(--text3);display:block;margin-top:-2px;}
+.nav{display:flex;gap:4px;margin-left:auto;}
+.nav-btn{display:flex;align-items:center;gap:8px;background:transparent;border:1px solid transparent;color:var(--text2);
+  font-family:var(--font-head);font-size:14px;font-weight:600;letter-spacing:0.5px;padding:6px 16px;border-radius:var(--radius);cursor:pointer;transition:all 0.2s;}
+.nav-btn:hover{color:var(--text);background:var(--surface2);border-color:var(--border2);}
+.nav-btn.active{color:var(--accent);background:rgba(249,115,22,0.08);border-color:rgba(249,115,22,0.3);}
+.status-indicator{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--pass);margin-left:16px;}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--pass);box-shadow:0 0 8px var(--pass);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--pass);}50%{opacity:0.6;box-shadow:0 0 3px var(--pass);}}
+.page{max-width:1200px;margin:0 auto;padding:32px 24px 48px;}
+.page.hidden{display:none!important;}.page.active{display:block;}
+.page-header{margin-bottom:28px;}
+.page-title{font-family:var(--font-head);font-size:30px;font-weight:700;letter-spacing:1px;}
+.page-desc{font-size:13px;color:var(--text2);margin-top:4px;}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;position:relative;overflow:hidden;}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.panel-label{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:1.5px;margin-bottom:16px;display:block;}
+.scan-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+.settings-grid{display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:start;}
+@media(max-width:768px){.scan-grid{grid-template-columns:1fr;}}
+@media(max-width:900px){.settings-grid{grid-template-columns:1fr;}}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;
+  transition:all 0.2s;background:var(--surface2);min-height:200px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(249,115,22,0.05);}
+.upload-zone.small-zone{min-height:100px;padding:20px;}
+.upload-idle{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.upload-hint{color:var(--text2);font-size:13px;}.upload-hint .link{color:var(--accent);text-decoration:underline;}
+.upload-formats{font-family:var(--font-mono);font-size:11px;color:var(--text3);}
+.scan-preview{width:100%;height:100%;object-fit:contain;border-radius:var(--radius);max-height:260px;}
+.camera-row{display:flex;gap:10px;margin-bottom:16px;}
+.camera-modal{border-radius:var(--radius);overflow:hidden;background:#000;margin-bottom:16px;}
+.camera-modal video{width:100%;display:block;max-height:300px;object-fit:cover;}
+.camera-controls{display:flex;gap:10px;padding:12px;background:rgba(0,0,0,0.8);}
+.btn-primary{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:#000;
+  font-family:var(--font-head);font-size:15px;font-weight:700;padding:10px 20px;border:none;border-radius:var(--radius);cursor:pointer;transition:all 0.2s;width:100%;}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);}
+.btn-primary:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;transform:none;}
+.btn-secondary{display:flex;align-items:center;gap:8px;background:var(--surface2);color:var(--text2);font-family:var(--font-head);
+  font-size:13px;font-weight:600;padding:8px 14px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;transition:all 0.2s;flex:1;}
+.btn-secondary:hover{background:var(--surface3);color:var(--text);border-color:var(--accent);}
+.btn-text{background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color 0.2s;}
+.btn-text:hover{color:var(--accent);}.btn-check{margin-top:4px;}
+.result-idle,.result-loading,.result-pass,.result-defect{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;text-align:center;gap:16px;}
+.idle-grid{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.idle-icon{opacity:0.4;}.idle-text{color:var(--text2);font-family:var(--font-head);font-size:16px;}
+.idle-sub{color:var(--text3);font-size:12px;line-height:1.6;}
+.loading-ring{width:56px;height:56px;border:3px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-family:var(--font-head);font-size:18px;color:var(--text);}
+.loading-sub{font-size:12px;color:var(--text3);font-family:var(--font-mono);}
+.dots::after{content:'';animation:dots 1.5s steps(3,end) infinite;}
+@keyframes dots{0%{content:''}33%{content:'.'}66%{content:'..'}100%{content:'...'}}
+.result-badge{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.result-text{font-family:var(--font-head);font-size:28px;font-weight:700;letter-spacing:2px;}
+.pass-text{color:var(--pass);text-shadow:0 0 20px rgba(34,197,94,0.4);}
+.defect-text{color:var(--fail);text-shadow:0 0 20px rgba(239,68,68,0.4);}
+.result-caption{color:var(--text2);font-size:13px;}
+.result-defect-name{font-family:var(--font-mono);font-size:16px;color:var(--fail);background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);padding:6px 18px;border-radius:4px;}
+.score-bar-wrap{width:100%;display:flex;align-items:center;gap:10px;}
+.score-label{font-family:var(--font-mono);font-size:11px;color:var(--text3);white-space:nowrap;}
+.score-bar{flex:1;height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;}
+.score-fill{height:100%;border-radius:3px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);width:0%;}
+.pass-fill{background:linear-gradient(90deg,var(--pass),#4ade80);}
+.defect-fill{background:linear-gradient(90deg,var(--fail),#f87171);}
+.score-value{font-family:var(--font-mono);font-size:12px;color:var(--text2);white-space:nowrap;}
+.matched-section{width:100%;}.matched-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;}
+.matched-img{width:100%;max-height:140px;object-fit:contain;border-radius:var(--radius);border:1px solid rgba(239,68,68,0.3);background:var(--surface2);}
+/* Defect detail card in results */
+.defect-detail-card{width:100%;background:var(--surface2);border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:14px;text-align:left;margin-top:4px;}
+.detail-row{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;}
+.detail-row:last-child{margin-bottom:0;}
+.detail-icon{font-size:14px;min-width:20px;}
+.detail-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:2px;}
+.detail-value{font-size:13px;color:var(--text);line-height:1.4;}
+.keyword-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.keyword-tag{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25);color:var(--accent);
+  font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:3px;}
+.area-badge{background:rgba(255,255,255,0.05);border:1px solid var(--border2);color:var(--text2);
+  font-family:var(--font-mono);font-size:11px;padding:3px 10px;border-radius:3px;display:inline-block;}
+.history-section{margin-top:12px;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.history-list{display:flex;flex-wrap:wrap;gap:10px;}
+.empty-history{color:var(--text3);font-size:13px;font-family:var(--font-mono);}
+.history-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:12px;min-width:200px;flex:1;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.history-thumb{width:36px;height:36px;object-fit:cover;border-radius:4px;background:var(--surface3);}
+.history-info{flex:1;min-width:0;}
+.history-status{font-family:var(--font-head);font-size:13px;font-weight:700;}
+.history-status.pass{color:var(--pass);}.history-status.defect{color:var(--fail);}
+.history-detail{font-size:11px;color:var(--text3);font-family:var(--font-mono);}
+.history-time{font-size:10px;color:var(--text3);}
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-body);font-size:14px;padding:10px 14px;border-radius:var(--radius);outline:none;transition:border-color 0.2s;}
+.form-input:focus{border-color:var(--accent);}.form-input::placeholder{color:var(--text3);}
+textarea.form-input{resize:vertical;min-height:70px;}
+.area-select{appearance:none;}
+.preview-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.preview-thumb{width:52px;height:52px;object-fit:cover;border-radius:4px;border:1px solid var(--border2);}
+.badge-count{background:var(--accent);color:#000;font-size:11px;font-weight:700;padding:1px 7px;border-radius:20px;margin-left:4px;}
+.settings-msg{margin-top:12px;padding:10px 14px;border-radius:var(--radius);font-size:13px;font-family:var(--font-mono);}
+.settings-msg.success{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:var(--pass);}
+.settings-msg.error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--fail);}
+.defects-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;min-height:120px;}
+.empty-state{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--text3);font-size:13px;padding:32px;grid-column:1/-1;}
+.defect-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all 0.2s;position:relative;animation:fadeIn 0.3s ease;}
+.defect-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.defect-card-img{width:100%;height:100px;object-fit:cover;display:block;background:var(--surface3);}
+.defect-card-body{padding:10px 12px;}
+.defect-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.defect-card-name{font-family:var(--font-head);font-size:14px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.defect-card-count{font-family:var(--font-mono);font-size:10px;color:var(--accent);background:rgba(249,115,22,0.1);padding:2px 6px;border-radius:3px;margin-left:6px;white-space:nowrap;}
+.defect-card-area{font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-bottom:4px;}
+.defect-card-desc{font-size:11px;color:var(--text2);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.defect-card-keywords{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.defect-card-kw{font-family:var(--font-mono);font-size:9px;color:var(--accent);background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.15);padding:1px 5px;border-radius:2px;}
+.defect-delete-btn{position:absolute;top:6px;right:6px;width:26px;height:26px;background:rgba(239,68,68,0.8);border:none;border-radius:4px;color:#fff;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;}
+.defect-card:hover .defect-delete-btn{display:flex;}.defect-delete-btn:hover{background:var(--fail);}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 20px;font-size:13px;font-family:var(--font-mono);color:var(--text);z-index:9999;box-shadow:var(--shadow);transition:opacity 0.3s,transform 0.3s;max-width:320px;}
+.toast.show{opacity:1;transform:translateY(0);}.toast.hidden{opacity:0;pointer-events:none;transform:translateY(8px);}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <path d="M10 2h8l3 4v16l-3 4H10l-3-4V6l3-4z" stroke="#F97316" stroke-width="1.5" fill="none"/>
+          <circle cx="14" cy="14" r="3" fill="#F97316"/>
+          <path d="M14 8v3M14 17v3M8 14h3M17 14h3" stroke="#F97316" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">BottleGuard</span>
+        <span class="brand-sub">Defect Detection System v2.0</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" id="nav-scan" onclick="showPage('scan')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Scan
+      </button>
+      <button class="nav-btn" id="nav-settings" onclick="showPage('settings')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        Defect Settings
+      </button>
+    </nav>
+    <div class="status-indicator">
+      <span class="status-dot"></span>
+      <span>SYSTEM ONLINE</span>
+    </div>
+  </div>
+</header>
+
+<!-- SCAN PAGE -->
+<main id="page-scan" class="page active">
+  <div class="page-header">
+    <h1 class="page-title">Bottle Inspection</h1>
+    <p class="page-desc">Upload or capture a bottle image to check for defects</p>
+  </div>
+  <div class="scan-grid">
+    <div class="panel">
+      <div class="panel-label">INPUT IMAGE</div>
+      <div class="upload-zone" id="upload-zone"
+           ondrop="handleDrop(event)" ondragover="handleDragOver(event)"
+           ondragleave="handleDragLeave(event)"
+           onclick="document.getElementById('scan-input').click()">
+        <div class="upload-idle" id="upload-idle">
+          <div>
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <path d="M24 8v24M16 16l8-8 8 8" stroke="#F97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 36h32" stroke="#666" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="upload-hint">Drop image here or <span class="link">click to browse</span></p>
+          <p class="upload-formats">Supports: JPG · PNG · BMP · WEBP</p>
+        </div>
+        <img id="scan-preview" class="scan-preview hidden" alt="Preview" />
+      </div>
+      <input type="file" id="scan-input" accept="image/*" style="display:none" onchange="handleScanFile(event)" />
+      <div class="camera-row">
+        <button class="btn-secondary" onclick="startCamera()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Use Camera
+        </button>
+        <button class="btn-secondary" id="btn-clear" onclick="clearScan()" style="display:none">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+          Clear
+        </button>
+      </div>
+      <div class="camera-modal hidden" id="camera-modal">
+        <video id="camera-video" autoplay playsinline></video>
+        <div class="camera-controls">
+          <button class="btn-primary" onclick="capturePhoto()">📸 Capture</button>
+          <button class="btn-secondary" onclick="stopCamera()">Cancel</button>
+        </div>
+      </div>
+      <canvas id="camera-canvas" style="display:none"></canvas>
+      <button class="btn-primary btn-check" id="btn-check" onclick="checkImage()" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+        Run Defect Check
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-label">DETECTION RESULT</div>
+      <div class="result-idle" id="result-idle">
+        <div class="idle-grid">
+          <div class="idle-icon">
+            <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+              <circle cx="28" cy="28" r="26" stroke="#2a2a2a" stroke-width="2"/>
+              <path d="M18 28h20M28 18v20" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <p class="idle-text">Awaiting scan input</p>
+          <p class="idle-sub">Upload a bottle image and press<br/><strong>Run Defect Check</strong></p>
+        </div>
+      </div>
+      <div class="result-loading hidden" id="result-loading">
+        <div class="loading-ring"></div>
+        <p class="loading-text">Analyzing Image<span class="dots"></span></p>
+        <p class="loading-sub">Running ORB feature matching</p>
+      </div>
+      <div class="result-pass hidden" id="result-pass">
+        <div class="result-badge">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="18" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="2"/>
+            <path d="M12 20l6 6 10-12" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="result-text pass-text">PASS</span>
+        </div>
+        <p class="result-caption">No defects detected</p>
+        <div class="score-bar-wrap">
+          <span class="score-label">Similarity</span>
+          <div class="score-bar"><div class="score-fill pass-fill" id="pass-score-fill"></div></div>
+          <span class="score-value" id="pass-score-val">—</span>
+        </div>
+      </div>
+      <div class="result-defect hidden" id="result-defect">
+        <div class="result-badge">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="18" fill="rgba(239,68,68,0.15)" stroke="#ef4444" stroke-width="2"/>
+            <path d="M20 12v10M20 26v2" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <span class="result-text defect-text">DEFECT FOUND</span>
+        </div>
+        <p class="result-defect-name" id="result-defect-name">—</p>
+        <div class="score-bar-wrap">
+          <span class="score-label">Similarity</span>
+          <div class="score-bar"><div class="score-fill defect-fill" id="defect-score-fill"></div></div>
+          <span class="score-value" id="defect-score-val">—</span>
+        </div>
+        <!-- Full detail card -->
+        <div class="defect-detail-card" id="defect-detail-card">
+          <div class="detail-row" id="detail-area-row">
+            <span class="detail-icon">📍</span>
+            <div>
+              <div class="detail-label">AFFECTED AREA</div>
+              <span class="area-badge" id="detail-area">—</span>
+            </div>
+          </div>
+          <div class="detail-row" id="detail-desc-row">
+            <span class="detail-icon">📋</span>
+            <div>
+              <div class="detail-label">DESCRIPTION</div>
+              <div class="detail-value" id="detail-desc">—</div>
+            </div>
+          </div>
+          <div class="detail-row" id="detail-kw-row">
+            <span class="detail-icon">🏷️</span>
+            <div>
+              <div class="detail-label">KEYWORDS</div>
+              <div class="keyword-list" id="detail-keywords"></div>
+            </div>
+          </div>
+        </div>
+        <div class="matched-section">
+          <p class="matched-label">MATCHED REFERENCE IMAGE</p>
+          <img id="matched-img" class="matched-img" alt="Match" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="history-section">
+    <div class="section-header">
+      <span class="panel-label">RECENT SCANS</span>
+      <button class="btn-text" onclick="clearHistory()">Clear History</button>
+    </div>
+    <div class="history-list" id="history-list">
+      <p class="empty-history">No scans yet</p>
+    </div>
+  </div>
+</main>
+
+<!-- SETTINGS PAGE -->
+<main id="page-settings" class="page hidden">
+  <div class="page-header">
+    <h1 class="page-title">Defect Settings</h1>
+    <p class="page-desc">Manage defect categories with descriptions, keywords and affected areas</p>
+  </div>
+  <div class="settings-grid">
+    <div class="panel">
+      <div class="panel-label">ADD NEW DEFECT CATEGORY</div>
+
+      <div class="form-group">
+        <label class="form-label">Defect Name</label>
+        <input type="text" id="defect-name-input" class="form-input" placeholder="e.g. Blow Hole, Scratch, Dent…" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="defect-desc-input" class="form-input" placeholder="e.g. Black coloured big hole on body area of blue/green HDPE plastic bottle…"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Keywords (comma separated)</label>
+        <input type="text" id="defect-keywords-input" class="form-input" placeholder="e.g. blow, hole, black, body, HDPE, plastic" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Affected Area</label>
+        <select id="defect-area-input" class="form-input area-select">
+          <option value="">Select area…</option>
+          <option value="Body">Body</option>
+          <option value="Cap">Cap</option>
+          <option value="Bottom">Bottom</option>
+          <option value="Label">Label</option>
+          <option value="Neck">Neck</option>
+          <option value="Full Bottle">Full Bottle</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Sample Images</label>
+        <div class="upload-zone small-zone" onclick="document.getElementById('defect-images-input').click()">
+          <div>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <path d="M16 6v16M10 12l6-6 6 6" stroke="#F97316" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M4 24h24" stroke="#555" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <p class="upload-hint">Click to select images <span class="badge-count" id="defect-count-badge" style="display:none">0</span></p>
+            <p class="upload-formats">Multiple files allowed</p>
+          </div>
+        </div>
+        <input type="file" id="defect-images-input" accept="image/*" multiple style="display:none" onchange="handleDefectImages(event)" />
+        <div id="defect-preview-strip" class="preview-strip"></div>
+      </div>
+
+      <button class="btn-primary" onclick="uploadDefect()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Add Defect Category
+      </button>
+      <div id="settings-msg" class="settings-msg hidden"></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-header">
+        <span class="panel-label">DEFECT LIBRARY</span>
+        <button class="btn-text" onclick="loadDefects()">↻ Refresh</button>
+      </div>
+      <div id="defects-list" class="defects-list">
+        <div class="empty-state"><p>No defect categories added yet</p></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+let scanImageFile=null,defectFiles=[],cameraStream=null,scanHistory=[];
+
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.classList.add('hidden');});
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const t=document.getElementById('page-'+page);
+  if(t){t.classList.remove('hidden');t.classList.add('active');}
+  const b=document.getElementById('nav-'+page);
+  if(b)b.classList.add('active');
+  if(page==='settings')loadDefects();
+}
+
+function handleDragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('drag-over');}
+function handleDragLeave(e){document.getElementById('upload-zone').classList.remove('drag-over');}
+function handleDrop(e){
+  e.preventDefault();document.getElementById('upload-zone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))setScanImage(f);
+}
+
+function handleScanFile(e){const f=e.target.files[0];if(f)setScanImage(f);}
+
+function setScanImage(file){
+  scanImageFile=file;
+  const r=new FileReader();
+  r.onload=e=>{
+    const p=document.getElementById('scan-preview');
+    p.src=e.target.result;p.classList.remove('hidden');
+    document.getElementById('upload-idle').style.display='none';
+    document.getElementById('btn-clear').style.display='flex';
+    document.getElementById('btn-check').disabled=false;
+  };
+  r.readAsDataURL(file);showResultState('idle');
+}
+
+function clearScan(){
+  scanImageFile=null;
+  const p=document.getElementById('scan-preview');p.src='';p.classList.add('hidden');
+  document.getElementById('upload-idle').style.display='flex';
+  document.getElementById('btn-clear').style.display='none';
+  document.getElementById('btn-check').disabled=true;
+  document.getElementById('scan-input').value='';
+  showResultState('idle');
+}
+
+async function startCamera(){
+  try{
+    cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    document.getElementById('camera-video').srcObject=cameraStream;
+    document.getElementById('camera-modal').classList.remove('hidden');
+  }catch(e){showToast('Camera error: '+e.message);}
+}
+
+function stopCamera(){
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  document.getElementById('camera-modal').classList.add('hidden');
+}
+
+function capturePhoto(){
+  const v=document.getElementById('camera-video'),c=document.getElementById('camera-canvas');
+  c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
+  c.toBlob(blob=>{setScanImage(new File([blob],'capture.jpg',{type:'image/jpeg'}));stopCamera();},'image/jpeg',0.92);
+}
+
+async function checkImage(){
+  if(!scanImageFile){showToast('Please upload an image first.');return;}
+  showResultState('loading');
+  const fd=new FormData();fd.append('image',scanImageFile);
+  try{
+    const res=await fetch('/check_image',{method:'POST',body:fd});
+    const data=await res.json();
+    if(!res.ok){showToast('Error: '+(data.error||'Unknown'));showResultState('idle');return;}
+    showResultState(data.result==='PASS'?'pass':'defect',data);
+    addToHistory(data);
+  }catch(e){showToast('Network error — is server running?');showResultState('idle');}
+}
+
+function showResultState(state,data={}){
+  ['idle','loading','pass','defect'].forEach(s=>{
+    const el=document.getElementById('result-'+s);if(el)el.classList.add('hidden');
+  });
+  const t=document.getElementById('result-'+state);if(t)t.classList.remove('hidden');
+
+  if(state==='pass'&&data.score!=null){
+    const pct=Math.min(data.score,100);
+    document.getElementById('pass-score-fill').style.width=pct+'%';
+    document.getElementById('pass-score-val').textContent=pct.toFixed(1)+'%';
+  }
+  if(state==='defect'&&data.score!=null){
+    const pct=Math.min(data.score,100);
+    document.getElementById('defect-score-fill').style.width=pct+'%';
+    document.getElementById('defect-score-val').textContent=pct.toFixed(1)+'%';
+    document.getElementById('result-defect-name').textContent=data.defect_name||'—';
+    if(data.matched_image)document.getElementById('matched-img').src=data.matched_image;
+
+    // Show full detail card
+    const area=data.affected_area||'';
+    const desc=data.description||'';
+    const kws=(data.keywords||'').split(',').map(k=>k.trim()).filter(Boolean);
+
+    document.getElementById('detail-area').textContent=area||'—';
+    document.getElementById('detail-desc').textContent=desc||'—';
+
+    const kwContainer=document.getElementById('detail-keywords');
+    if(kws.length){
+      kwContainer.innerHTML=kws.map(k=>`<span class="keyword-tag">${k}</span>`).join('');
+    } else {
+      kwContainer.innerHTML='<span style="color:var(--text3);font-size:11px;">—</span>';
+    }
+  }
+}
+
+function addToHistory(data){
+  const preview=document.getElementById('scan-preview').src;
+  const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  scanHistory.unshift({...data,preview,time});renderHistory();
+}
+
+function renderHistory(){
+  const list=document.getElementById('history-list');
+  if(!scanHistory.length){list.innerHTML='<p class="empty-history">No scans yet</p>';return;}
+  list.innerHTML=scanHistory.slice(0,10).map(i=>`
+    <div class="history-item">
+      <img class="history-thumb" src="${i.preview}" alt="scan"/>
+      <div class="history-info">
+        <div class="history-status ${i.result==='PASS'?'pass':'defect'}">${i.result==='PASS'?'✓ PASS':'✗ DEFECT'}</div>
+        <div class="history-detail">${i.result==='DEFECT'?i.defect_name:'No defect'} · ${i.score?.toFixed(1)}%</div>
+      </div>
+      <div class="history-time">${i.time}</div>
+    </div>`).join('');
+}
+
+function clearHistory(){scanHistory=[];renderHistory();}
+
+function handleDefectImages(e){
+  defectFiles=Array.from(e.target.files);
+  const strip=document.getElementById('defect-preview-strip');
+  const badge=document.getElementById('defect-count-badge');
+  strip.innerHTML='';
+  defectFiles.forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{const img=document.createElement('img');img.src=e.target.result;img.className='preview-thumb';strip.appendChild(img);};
+    r.readAsDataURL(f);
+  });
+  badge.textContent=defectFiles.length;badge.style.display=defectFiles.length?'inline':'none';
+}
+
+async function uploadDefect(){
+  const name=document.getElementById('defect-name-input').value.trim();
+  const desc=document.getElementById('defect-desc-input').value.trim();
+  const keywords=document.getElementById('defect-keywords-input').value.trim();
+  const area=document.getElementById('defect-area-input').value;
+
+  if(!name){showSettingsMsg('Please enter a defect name.','error');return;}
+  if(!defectFiles.length){showSettingsMsg('Please select at least one image.','error');return;}
+
+  const fd=new FormData();
+  fd.append('defect_name',name);
+  fd.append('description',desc);
+  fd.append('keywords',keywords);
+  fd.append('affected_area',area);
+  defectFiles.forEach(f=>fd.append('images',f));
+
+  showSettingsMsg('Uploading...','success');
+
+  try{
+    const res=await fetch('/upload_defect',{method:'POST',body:fd});
+    const data=await res.json();
+    if(!res.ok){showSettingsMsg('Error: '+(data.error||'Failed'),'error');return;}
+    showSettingsMsg('✓ "'+name+'" added with '+defectFiles.length+' image(s).','success');
+    document.getElementById('defect-name-input').value='';
+    document.getElementById('defect-desc-input').value='';
+    document.getElementById('defect-keywords-input').value='';
+    document.getElementById('defect-area-input').value='';
+    defectFiles=[];
+    document.getElementById('defect-images-input').value='';
+    document.getElementById('defect-preview-strip').innerHTML='';
+    document.getElementById('defect-count-badge').style.display='none';
+    loadDefects();
+  }catch(e){showSettingsMsg('Network error: '+e.message,'error');}
+}
+
+async function loadDefects(){
+  const list=document.getElementById('defects-list');
+  list.innerHTML='<div class="empty-state"><p>Loading…</p></div>';
+  try{
+    const res=await fetch('/get_defects');const data=await res.json();
+    if(!Array.isArray(data)||!data.length){
+      list.innerHTML='<div class="empty-state"><p>No defect categories added yet</p></div>';return;
+    }
+    list.innerHTML=data.map(d=>{
+      const kws=(d.keywords||'').split(',').map(k=>k.trim()).filter(Boolean);
+      return `
+      <div class="defect-card">
+        <img class="defect-card-img" src="${d.preview}" alt="${d.name}"/>
+        <button class="defect-delete-btn" onclick="deleteDefect('${d.name}')">✕</button>
+        <div class="defect-card-body">
+          <div class="defect-card-top">
+            <span class="defect-card-name">${d.name}</span>
+            <span class="defect-card-count">${d.image_count} img</span>
+          </div>
+          ${d.affected_area?`<div class="defect-card-area">📍 ${d.affected_area}</div>`:''}
+          ${d.description?`<div class="defect-card-desc">${d.description}</div>`:''}
+          ${kws.length?`<div class="defect-card-keywords">${kws.map(k=>`<span class="defect-card-kw">${k}</span>`).join('')}</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){list.innerHTML='<div class="empty-state"><p>Failed to load.</p></div>';}
+}
+
+async function deleteDefect(name){
+  if(!confirm('Delete "'+name+'" and all its images?'))return;
+  try{
+    const res=await fetch('/delete_defect/'+encodeURIComponent(name),{method:'DELETE'});
+    if(res.ok){showToast('Deleted "'+name+'"');loadDefects();}
+    else showToast('Failed to delete.');
+  }catch(e){showToast('Network error.');}
+}
+
+function showSettingsMsg(text,type){
+  const el=document.getElementById('settings-msg');
+  el.textContent=text;el.className='settings-msg '+type;el.classList.remove('hidden');
+  if(type!=='success'||text.startsWith('✓'))
+    setTimeout(()=>el.classList.add('hidden'),4000);
+}
+
+let toastTimeout=null;
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.classList.remove('hidden');t.classList.add('show');
+  clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>{t.classList.remove('show');t.classList.add('hidden');},3500);
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('scan-input').addEventListener('click',e=>e.stopPropagation());
+  document.getElementById('defect-images-input').addEventListener('click',e=>e.stopPropagation());
+});
+</script>
+</body>
+</html>
