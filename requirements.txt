@@ -4,5 +4,4 @@ numpy
 werkzeug
 cloudinary
 gunicorn
-google-generativeai
 Pillow
